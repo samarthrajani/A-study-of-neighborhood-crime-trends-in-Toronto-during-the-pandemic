@@ -7,6 +7,14 @@
 # Pre-requisites: [...UPDATE THIS...]
 # Any other information needed? [...UPDATE THIS...]
 
+install.packages("janitor")
+library(janitor)
+install.packages("tidyverse")
+install.packages("opendatatoronto")
+library(opendatatoronto)
+library(dplyr)
+library(tidyverse)
+
 ### Loading the data ###
 raw_data <- read_csv("raw_data.csv")
 
@@ -56,6 +64,9 @@ cleaned_data$THEFTOVER_2020[is.na(cleaned_data$THEFTOVER_2020)]<- median(cleaned
 cleaned_data$THEFTOVER_2021[is.na(cleaned_data$THEFTOVER_2021)]<- median(cleaned_data$THEFTOVER_2021,na.rm = TRUE)
 cleaned_data$THEFTOVER_2022[is.na(cleaned_data$THEFTOVER_2022)]<- median(cleaned_data$THEFTOVER_2022,na.rm = TRUE)
 cleaned_data$THEFTOVER_2023[is.na(cleaned_data$THEFTOVER_2023)]<- median(cleaned_data$THEFTOVER_2023,na.rm = TRUE)
+
+# Add up the columns
+cleaned_data <- rbind(cleaned_data, data.frame(AREA_NAME='Total', t(colSums(cleaned_data[, -1]))))
 
 view(cleaned_data)
 
