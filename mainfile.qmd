@@ -1,0 +1,331 @@
+---
+#### Preamble ####
+# Purpose: Read in, summarise and visualise crime in Toronto during the pandemic
+# Author: Samarth Rajani
+# Email: samarth.rajani@mail.utoronto.ca
+# Date: 23rd January 2024
+# Prerequisites:
+
+title: "A study of neighborhood crime trends in Toronto during the pandemic"
+
+subtitle: "A deep dive into how the pandemic has affected the incidence of crime over the years"
+author: "Samarth Rajani"
+date: today
+date-format: long
+abstract: "The pandemic was a greatly stressful time for individuals worldwide. With such an unprecedented crisis at hand, governments adapted by imposing lockdowns and restricting footfall in the streets. This begs the question if there have been unusual trends in neighbourhood crime rates, since it both impacted the ability to commit crimes as well as posed a challenge for law enforcement to prevent crime. This paper examines trends across different type of crimes from year 2019 to 2023."
+format: pdf
+number-sections: true
+bibliography: bibliography.bib
+---
+
+```{r}
+#| echo: false
+#| warning: false
+#### Workspace setup ####
+
+#install.packages("knitr")
+#install.packages("lintr")
+#install.packages("reprex")
+#install.packages("tidyverse")
+#install.packages("tinytex")
+#install.packages("usethis")
+#install.packages("ggplot2")
+#install.packages("dplyr")
+#install.packages("janitor")
+
+library(knitr)
+library(lintr)
+library(renv)
+library(reprex)
+library(tidyverse)
+library(tinytex)
+library(usethis)
+library(ggplot2)
+library(dplyr)
+library(janitor)
+```
+
+**Contents** 1. Introduction 2. Data + Data Description + Variables of Interest + Data Processing
+
+# Introduction
+
+Across nations and across time, governments have worked towards the goal of minimizing criminal activity. Ontario is no exception, taking steps such as passing the Enhancing Access to Justice Act to make it easier to report crime, [@justiceact], increasing police presence on TTC stations in response to a spike in crime [@morepolice] and a consistent increase in police spending budget [@policespending] among others. While these measures are a clear indication of good intentions on the part of policy makers, the efficacy of their efforts remains fuzzy at best. Experts remain unsure if there has been any change in crime rates.
+
+To add to this, the pandemic severely affected human presence on the streets. The government issued and enforced instructions to prevent residents from stepping out first in November of 2020, and continued restrictions in some form or another in the following years. This both obstructed the authorities from enforcing law on the streets but also reduced the ability to commit crime in public, which both influence the crime rates of the city. This paper aims to study the trends of incidence of crime across multiple types of crime over the pandemic years.
+
+# Data
+
+In this section, all details regarding data collection and processing will be discussed. A snapshot of the table about the data will be shown in Table 1
+
+## Data Description
+
+The data used in this paper has been obtained from the City of Toronto's Open Data Portal, using the opendatatoronto package in R [@opendatatoronto]. The data set is titled 'Neighbourhood Crime Rates', and includes data for crimes such as Assault, Auto Theft, Break and Enter, Robbery, Theft Over, Homicide and Shooting & Firearm Discharges. It is worth noting that the data set contains data of both number of incidents for each type of crime and the rate of crime per 100,000 from year 2014 to year 2023. Also important is that the data set has been updated to reflect the new 158 neighbourhoods structure of Toronto imposed in 2022, and the extra 18 neighbourhoods have their data added. The data set also contains a serial number and a neighbourhood ID column in accordance with City of Toronto's new neighbourhood structure. Furthermore, there are 20 columns dedicated to each type of crime -- the first 10 being the count of crime incidents from years 2014 to 2019 and the subsequent 10 columns being the rate of incidence of crime from years 2014 to 2019. As stated in the data set description 'crime rate is calculated as the crime count per 100,000 population per year'. Finally, another column introduces the population in 2023. The original data set also contains a map of city of Toronto that is interactable in file formats different than ones used in this paper. Therefore, that data is also removed. It is also worth noting the data set does not include any temporary residents such as commuters or tourists and only permanent residents.
+
+## Variables of Interest
+
+The purpose of this paper is to study the total incidence of different types of crime over the pandemic year. As a result, the columns regarding the rates of crime are not required and removed from the data set. Furthermore, COVID-19 was declared a pandemic in 2020, so values that are before that are not important to the analysis and therefore also removed. Finally, all identifiers are also removed. Data from 2019 is retained as a point of reference.
+
+```{r}
+#| echo: false
+#| warning: false
+analysis_data <- read_csv(here::here("analysis_data.csv"))
+```
+
+## Data Processing
+
+To process and clean the data to suit our needs, we use the janitor [@janitor] and tidyverse[@tidyverse] packages in R [@citeR]
+
+After loading the required packages, we loaded the data into R using the import code described on the City of Toronto's Open Data Portal itself .This was then read into a csv file called raw_data.csv. Using the grepl function, we remove the columns that are not needed for our analysis.
+
+A key issue with any data analysis is that of missing values, and this data set was no exception. Since all missing values show up as 'NA' in R, we account for this by using the apply function to generate an array of column headers that have 'NA' as an entry. We then use the median for every type of crime in a specific year to fill in these missing values using the median function. The median is used instead of the mean for robustness against outliers as well as to prevent decimal values. This may cause some problems in the analysis, which will be addressed further in the paper.
+
+Finally, since we intend to study aggregate crime incidence, we bind a new column called 'Total' to the data frame using the r.bind function, and sum the crime counts for every remaining column. This will be then stored in the file we use, called analysis_data.csv.
+
+```{r}
+#| echo: false
+#| warning: false
+#| label: tbl-subsection
+#| tbl-cap: "Sample of cleaned neighbourhood crime data for assault"
+
+### Show a sample sub section of data for first 5 neighbourhoods
+
+mini_table <- analysis_data[1:3, 1:4] 
+kable(mini_table,format = 'latex',align = 'l')
+
+
+```
+
+# Examining each type of crime
+
+## Assault
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: assaultincidents
+#| fig-cap: "Total incidents of Assault in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 2:6
+
+# Create a new data frame with the same column names
+assault_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+assault_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(assault_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(assault_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+Figure 1 shows an interesting trend in incidents of assault. On March 17 2020, Premier Doug Ford declared a public health emergency in Ontario, shutting down almost all businesses except essential commodities[@lockdown]. As a result, the likelihood of stepping outside one's house is starkly reduced, shown by the sharp decline in incidences of assault in 2020. While there were still restrictions in the years up to 2022, the lockdowns were less severe and for shorter periods of time. This coupled with strengthening of public sentiment with time increased footfall in the streets, increasing the incidences of assault.
+
+## Auto theft
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: autotheftincidents
+#| fig-cap: "Total incidents of Autotheft in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 7:11
+
+# Create a new data frame with the same column names
+autotheft_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+autotheft_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(autotheft_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(autotheft_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+Auto theft trends shown in figure 2 seem counterintuitive, with an increasing number of autotheft incidents over time. This can be explained by how the lockdowns and restrictions due to the COVID-19 pandemic affected the supply chain for vehicles. The low levels of autotheft initially are due to a lack of vehicles available in the first place -- when there are no vehicles being supplied there are no vehicles being stolen. However, the delayed orders were filled in the years after 2020, flooding the market with more vehicles and thereby driving up autotheft incidents. [@autotheft]
+
+## Bike theft
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: biketheftincidents
+#| fig-cap: "Total incidents of Biketheft in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 12:16
+
+# Create a new data frame with the same column names
+biketheft_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+biketheft_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(biketheft_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(biketheft_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+Bicycle theft trends are seemingly opposite to that of auto theft. With motor vehicles and bicycles being substitutes, and the only method of getting around the city being bicycles due to the lockdown restrictions, the massive demand opened the doorway for profit via bike theft. This is seen by the massive spike when the lockdown was first announced in 2020, and return to normal levels since. [@biketheft]
+
+## Break and enter
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: breakenterincidents
+#| fig-cap: "Total incidents of Break and Enter in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 17:21
+
+# Create a new data frame with the same column names
+breakenter_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+breakenter_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(breakenter_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(breakenter_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+The inability to move about freely during the lockdown meant a reducing trend in break and enter incidents going into the pandemic. As things opened up, break and enter was on the rise yet again.
+
+## Homicide
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: homicideincidents
+#| fig-cap: "Total incidents of Homicide in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 22:26
+
+# Create a new data frame with the same column names
+homicide_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+homicide_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(homicide_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(homicide_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+Homicides have not seen much fluctuation before and during the pandemic according as reflected in the figure. While it seems as though 2023 has a sharp increase in homicide, this is due to a disproportionately large number of missing values. The correction measure used in this paper has severely overestimated the homicide incidents in 2023.
+
+## Robbery
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: robberyincidents
+#| fig-cap: "Total incidents of Robbery in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 27:31
+
+# Create a new data frame with the same column names
+robbery_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+robbery_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(robbery_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(robbery_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+The explanation for the trend in robberies is the straightforward -- the lockdowns and restrictions made it difficult to carry out this specific kind of crime.[@robbery]
+
+## Shooting
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| label: shootingincidents
+#| fig-cap: "Total incidents of Shooting in Toronto from 2019 to 2023"
+
+# Your data
+
+x_value <- c("2019", "2020", "2021", "2022", "2023")
+row_index <- 159
+column_indices <- 32:36
+
+# Create a new data frame with the same column names
+shooting_frame <- analysis_data %>% slice(row_index) %>% select(column_indices)
+
+# Convert the data to long format
+shooting_frame_long <- data.frame(
+  Year = x_value,
+  Value = unlist(shooting_frame)
+)
+
+# Plot the connected scatter plot
+ggplot(shooting_frame_long, aes(x = Year, y = Value, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Year", y = "Value")
+```
+
+It seems like robberies and shootings follow similar trends probably explained by the enforcement of the lockdown. The opportunity to commit a shooting is reduced when people are forced to stay indoors, showing a downward trend until 2022 when almost all restrictions were removed.[@shooting]
+
+# References
